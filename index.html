@@ -782,9 +782,10 @@ class Player {
     if (next >= this.count() || next <= this.idx) { this.playing = false; this.onFinish && this.onFinish(); this.onState && this.onState(); return; }
     this.idx = next;
     this.onShow(next);
-    this.nextAt += this.dur(next);
-    const now = performance.now();
-    if (now - this.nextAt > 250) this.nextAt = now + this.dur(next);   // fell far behind: resync, never burst
+    // Keep the long-run pace exact by absorbing small timer jitter, but never show a word for less than 85% of
+    // its time: after a browser stall, the lost time is dropped instead of being made up with flashing words.
+    const now = performance.now(), d = this.dur(next);
+    this.nextAt = Math.max(this.nextAt + d, now + d * 0.85);
     this.arm();
   }
   pause() { if (!this.playing) return; this.playing = false; clearTimeout(this.timer); this.onState && this.onState(); }
@@ -950,10 +951,12 @@ function fmtTime(ms) {
   return `${Math.floor(min / 60)} h ${min % 60} min left`;
 }
 const fmtN = n => n.toLocaleString('en');
+let visibleCount = 0;
 function buildSuffix() {
   const n = book ? book.length : 0;
   suffix = new Float64Array(n + 1);
-  for (let i = n - 1; i >= 0; i--) suffix[i] = suffix[i + 1] + book.factor(i);
+  visibleCount = 0;
+  for (let i = n - 1; i >= 0; i--) { const f = book.factor(i); suffix[i] = suffix[i + 1] + f; if (f > 0) visibleCount++; }
 }
 function updateUI() {
   const playing = player.playing, n = book ? book.length : 0, i = player.idx;
@@ -971,7 +974,9 @@ function updateUI() {
   $('meta').textContent = meta;
   $('wpmOut').textContent = $('wpmLabel').textContent = `${player.wpm} wpm`;
   const b = 60000 / player.wpm;
-  $('pauseNote').textContent = `At ${player.wpm} wpm: word ${Math.round(b)} ms · sentence end ${Math.round(b * FACTOR.sent)} ms · paragraph end ${Math.round(b * FACTOR.para)} ms`;
+  let pace = '';
+  if (n && visibleCount && suffix[0]) pace = ` · with pauses this text reads at about ${Math.round(player.wpm * visibleCount / suffix[0])} wpm`;
+  $('pauseNote').textContent = `At ${player.wpm} wpm: word ${Math.round(b)} ms · sentence end ${Math.round(b * FACTOR.sent)} ms · paragraph end ${Math.round(b * FACTOR.para)} ms${pace}`;
   $('sentPause').disabled = testing;
   for (const id of ['backBtn', 'fwdBtn', 'playBtn', 'slower', 'faster']) $(id).disabled = testing || !n;
   $('docBtn').disabled = testing || !n || !book.id;

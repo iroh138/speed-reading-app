@@ -1,5 +1,5 @@
-// RSVP Speed Reader service worker. Version da7ef31bda
-const APP = 'rsvp-app-da7ef31bda', FONTS = 'rsvp-fonts';
+// RSVP Speed Reader service worker. Version 57f47aacb2
+const APP = 'rsvp-app-57f47aacb2', FONTS = 'rsvp-fonts';
 const FILES = ["./", "index.html", "manifest.webmanifest", "vendor/pdf.min.js", "vendor/pdf.worker.min.js", "icons/icon-192.png", "icons/icon-512.png", "icons/maskable-512.png", "icons/apple-touch-icon.png"];
 self.addEventListener('install', e => { e.waitUntil(caches.open(APP).then(c => c.addAll(FILES)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => {
